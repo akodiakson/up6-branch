@@ -2,9 +2,12 @@ package com.example.android.sunshine.app.sync;
 
 import android.app.Service;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.os.IBinder;
 
+import com.example.android.sunshine.app.Utility;
+import com.example.android.sunshine.app.data.WeatherContract;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
@@ -56,20 +59,42 @@ public class SendWeatherUpdateToWearablesService extends Service implements Goog
     @Override
     public void onConnected(Bundle bundle) {
         System.out.println("SendWeatherUpdateToWearablesService.onConnected");
-        PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/weatherUpdate");
-        putDataMapReq.getDataMap().putString(KEY_WEATHER_DATA, "some generic weather data");
-        putDataMapReq.getDataMap().putLong("Time", System.currentTimeMillis());
-        PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
-        putDataReq.setUrgent();
-        PendingResult<DataApi.DataItemResult> pendingResult = Wearable.DataApi.putDataItem(googleApiClient, putDataReq);
+        Cursor cursor = getContentResolver().query(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(Utility.getPreferredLocation(getApplicationContext()), System.currentTimeMillis()), null, null, null, null);
+        System.out.println("cursor = " + cursor);
+        if(cursor != null){
+            System.out.println("cursor.getCount() = " + cursor.getCount());
 
-        pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
-            @Override
-            public void onResult(DataApi.DataItemResult dataItemResult) {
-                System.out.println("SendWeatherUpdateToWearablesService.onResult");
-                System.out.println("dataItemResult = " + dataItemResult);
+            String fmtHigh = "";
+            String fmtLow = "";
+            while(cursor.moveToNext()){
+                int highTextColumnIndex = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MAX_TEMP);
+                int lowTempColumnIndex = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_MIN_TEMP);
+                double highTemp = cursor.getDouble(highTextColumnIndex);
+                double lowTemp = cursor.getDouble(lowTempColumnIndex);
+                fmtHigh = Utility.formatTemperature(getApplicationContext(), highTemp);
+                fmtLow = Utility.formatTemperature(getApplicationContext(), lowTemp);
+
+                System.out.println("fmtHigh = " + fmtHigh);
+                System.out.println("fmtLow = " + fmtLow);
             }
-        });
+
+
+            cursor.close();
+            PutDataMapRequest putDataMapReq = PutDataMapRequest.create("/weatherUpdate");
+            putDataMapReq.getDataMap().putString(KEY_WEATHER_DATA, fmtHigh + ";" + fmtLow);
+            putDataMapReq.getDataMap().putLong("Time", System.currentTimeMillis());
+            PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+            putDataReq.setUrgent();
+            PendingResult<DataApi.DataItemResult> pendingResult = Wearable.DataApi.putDataItem(googleApiClient, putDataReq);
+
+            pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+                @Override
+                public void onResult(DataApi.DataItemResult dataItemResult) {
+                    System.out.println("SendWeatherUpdateToWearablesService.onResult");
+                    System.out.println("dataItemResult = " + dataItemResult);
+                }
+            });
+        }
     }
 
     @Override

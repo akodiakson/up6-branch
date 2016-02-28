@@ -20,15 +20,18 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.PreferenceManager;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
@@ -58,6 +61,12 @@ public class MyWatchFace extends CanvasWatchFaceService {
      */
     private static final int MSG_UPDATE_TIME = 0;
 
+    private static final int MSG_UPDATE_WEATHER_DATA = 1;
+
+    private GetRecentWeatherDataTask weatherDataTask;
+    private String mRecentWeatherData;
+
+
     @Override
     public Engine onCreateEngine() {
         return new Engine();
@@ -78,6 +87,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     case MSG_UPDATE_TIME:
                         engine.handleUpdateTimeMessage();
                         break;
+                    case MSG_UPDATE_WEATHER_DATA:
+                        engine.handleUpdateWeatherData();
+                        break;
                 }
             }
         }
@@ -88,6 +100,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
         boolean mRegisteredTimeZoneReceiver = false;
         Paint mBackgroundPaint;
         Paint mTextPaint;
+        Paint mWeatherTextPaint;
         boolean mAmbient;
         Time mTime;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -125,8 +138,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint.setColor(resources.getColor(R.color.background));
 
             mTextPaint = new Paint();
+            mWeatherTextPaint = new Paint();
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
-
+            mWeatherTextPaint = createTextPaint(resources.getColor(R.color.digital_weather_text));
             mTime = new Time();
         }
 
@@ -154,6 +168,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 // Update time zone in case it changed while we weren't visible.
                 mTime.clear(TimeZone.getDefault().getID());
                 mTime.setToNow();
+                mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_WEATHER_DATA, 50);
+
             } else {
                 unregisterReceiver();
             }
@@ -191,8 +207,11 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     ? R.dimen.digital_x_offset_round : R.dimen.digital_x_offset);
             float textSize = resources.getDimension(isRound
                     ? R.dimen.digital_text_size_round : R.dimen.digital_text_size);
+            float weatherTextSize = resources.getDimension(isRound
+                    ? R.dimen.weather_text_size : R.dimen.weather_text_size);
 
             mTextPaint.setTextSize(textSize);
+            mWeatherTextPaint.setTextSize(weatherTextSize);
         }
 
         @Override
@@ -214,6 +233,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
                     mTextPaint.setAntiAlias(!inAmbientMode);
+                    mWeatherTextPaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
             }
@@ -262,6 +282,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     ? String.format("%d:%02d", mTime.hour, mTime.minute)
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            //TODO -- Andrew -- Here is where I'd draw the hi/low text
+            if(mRecentWeatherData != null && mRecentWeatherData.length() > 0){
+                canvas.drawText(mRecentWeatherData, mXOffset, mYOffset * 1.25f, mWeatherTextPaint);
+            }
         }
 
         /**
@@ -294,6 +318,30 @@ public class MyWatchFace extends CanvasWatchFaceService {
                         - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
+        }
+
+        private void handleUpdateWeatherData(){
+            System.out.println("Engine.handleUpdateWeatherData");
+            if(weatherDataTask != null && !weatherDataTask.isCancelled()){
+                weatherDataTask.cancel(true);
+            }
+            weatherDataTask = new GetRecentWeatherDataTask();
+            weatherDataTask.execute();
+        }
+    }
+
+    private class GetRecentWeatherDataTask extends AsyncTask<Void, Void, String>{
+        @Override
+        protected String doInBackground(Void... params) {
+            // Get today's data from the ContentProvider
+
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            return prefs.getString("KEY_WEARABLE_WEATHER_DATA", "dummy");
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            mRecentWeatherData = s;
         }
     }
 }
