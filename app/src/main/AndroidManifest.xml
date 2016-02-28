@@ -16,8 +16,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.android.sunshine.app">
 
-
-
     <!-- This permission is necessary in order for Sunshine to perform network access. -->
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -184,6 +182,10 @@
         </service>
         <service
             android:name=".gcm.RegistrationIntentService"
+            android:exported="false" />
+        <service
+            android:name=".sync.SendWeatherUpdateToWearablesService"
+            android:enabled="true"
             android:exported="false"></service>
     </application>
 
