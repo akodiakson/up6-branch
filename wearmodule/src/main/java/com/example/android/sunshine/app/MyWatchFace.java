@@ -141,6 +141,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mWeatherTextPaint = new Paint();
             mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
             mWeatherTextPaint = createTextPaint(resources.getColor(R.color.digital_weather_text));
+            mWeatherTextPaint.setTextAlign(Paint.Align.CENTER);
             mTime = new Time();
         }
 
@@ -284,7 +285,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
             canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
             //TODO -- Andrew -- Here is where I'd draw the hi/low text
             if(mRecentWeatherData != null && mRecentWeatherData.length() > 0){
-                canvas.drawText(mRecentWeatherData, mXOffset, mYOffset * 1.25f, mWeatherTextPaint);
+//                canvas.drawText(mRecentWeatherData, mXOffset, mYOffset * 1.25f, mWeatherTextPaint);
+
+                canvas.drawText(mRecentWeatherData, bounds.centerX(), mYOffset * 1.25f, mWeatherTextPaint);
             }
         }
 
