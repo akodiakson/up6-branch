@@ -22,6 +22,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -31,6 +32,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Parcelable;
 import android.preference.PreferenceManager;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
@@ -47,6 +49,10 @@ import java.util.concurrent.TimeUnit;
  * low-bit ambient mode, the text is drawn without anti-aliasing in ambient mode.
  */
 public class MyWatchFace extends CanvasWatchFaceService {
+
+    public static final String ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE = "ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE";
+    public static final String EXTRA_WEATHER_BITMAP = "EXTRA_WEATHER_BITMAP";
+
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
 
@@ -65,6 +71,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
     private GetRecentWeatherDataTask weatherDataTask;
     private String mRecentWeatherData;
+    private Bitmap mWeatherBitmap;
 
 
     @Override
@@ -93,6 +100,17 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 }
             }
         }
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        System.out.println("MyWatchFace.onStartCommand " + intent);
+        if(intent != null && ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE.equals(intent.getAction())){
+            Parcelable parcelableExtra = intent.getParcelableExtra(EXTRA_WEATHER_BITMAP);
+            System.out.println("parcelableExtra = " + parcelableExtra);
+            mWeatherBitmap = (Bitmap) parcelableExtra;
+        }
+        return super.onStartCommand(intent, flags, startId);
     }
 
     private class Engine extends CanvasWatchFaceService.Engine {
@@ -288,6 +306,10 @@ public class MyWatchFace extends CanvasWatchFaceService {
 //                canvas.drawText(mRecentWeatherData, mXOffset, mYOffset * 1.25f, mWeatherTextPaint);
 
                 canvas.drawText(mRecentWeatherData, bounds.centerX(), mYOffset * 1.25f, mWeatherTextPaint);
+            }
+
+            if(mWeatherBitmap != null){
+                canvas.drawBitmap(mWeatherBitmap, 0, 0, mWeatherTextPaint);
             }
         }
 
