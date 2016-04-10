@@ -53,6 +53,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
     public static final String ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE = "ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE";
     public static final String EXTRA_WEATHER_BITMAP = "EXTRA_WEATHER_BITMAP";
+    public static final String EXTRA_WEATHER_TEXT = "EXTRA_WEATHER_TEXT";
+
 
     private static final Typeface NORMAL_TYPEFACE =
             Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL);
@@ -82,7 +84,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private int mTimeColor;
     private int mWeatherColor;
     private int mBackgroundColor;
-
 
     @Override
     public Engine onCreateEngine() {
@@ -114,23 +115,28 @@ public class MyWatchFace extends CanvasWatchFaceService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        System.out.println("MyWatchFace.onStartCommand " + intent);
         if(intent != null && ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE.equals(intent.getAction())){
-            Parcelable parcelableExtra = intent.getParcelableExtra(EXTRA_WEATHER_BITMAP);
-            System.out.println("parcelableExtra = " + parcelableExtra);
-            mWeatherBitmap = Bitmap.createScaledBitmap((Bitmap) parcelableExtra, BITMAP_SIZE, BITMAP_SIZE, false);
-            if(mWeatherBitmap != null){
-                Palette.from(mWeatherBitmap).maximumColorCount(24).generate(new Palette.PaletteAsyncListener() {
-                    @Override
-                    public void onGenerated(Palette palette) {
-                        mWeatherColor = palette.getVibrantColor(mWeatherColor);
-                        mTimeColor = palette.getDarkVibrantColor(mTimeColor);
-                        mWeatherTextPaint.setColor(mWeatherColor);
-                        mTimePaint.setColor(mTimeColor);
-
-                    }
-                });
+            Parcelable bitmapExtra = intent.getParcelableExtra(EXTRA_WEATHER_BITMAP);
+            if(bitmapExtra != null) {
+                mWeatherBitmap = Bitmap.createScaledBitmap((Bitmap) bitmapExtra, BITMAP_SIZE, BITMAP_SIZE, false);
+                if (mWeatherBitmap != null) {
+                    Palette.from(mWeatherBitmap).maximumColorCount(24).generate(new Palette.PaletteAsyncListener() {
+                        @Override
+                        public void onGenerated(Palette palette) {
+                            mWeatherColor = palette.getVibrantColor(mWeatherColor);
+                            mTimeColor = palette.getDarkVibrantColor(mTimeColor);
+                            mWeatherTextPaint.setColor(mWeatherColor);
+                            mTimePaint.setColor(mTimeColor);
+                        }
+                    });
+                }
             }
+
+            String stringExtra = intent.getStringExtra(EXTRA_WEATHER_TEXT);
+            if(stringExtra != null){
+                mRecentWeatherData = stringExtra;
+            }
+
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -331,11 +337,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
             canvas.drawText(text, bounds.centerX(), mYOffset, mTimePaint);
             //TODO -- Andrew -- Here is where I'd draw the hi/low text
             if(mRecentWeatherData != null && mRecentWeatherData.length() > 0) {
-//                canvas.drawText(mRecentWeatherData, mXOffset, mYOffset * 1.25f, mWeatherTextPaint);
                 canvas.drawText(mRecentWeatherData, bounds.centerX(), mYOffset * 1.25f, mWeatherTextPaint);
             }
-
-
         }
 
         /**
@@ -371,7 +374,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
         }
 
         private void handleUpdateWeatherData(){
-            System.out.println("Engine.handleUpdateWeatherData");
             if(weatherDataTask != null && !weatherDataTask.isCancelled()){
                 weatherDataTask.cancel(true);
             }
