@@ -79,9 +79,9 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private Paint mWeatherTextPaint;
     Paint mBackgroundPaint;
 
-    private int timeColor;
-    private int weatherColor;
-    private int backgroundColor;
+    private int mTimeColor;
+    private int mWeatherColor;
+    private int mBackgroundColor;
 
 
     @Override
@@ -123,16 +123,13 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 Palette.from(mWeatherBitmap).maximumColorCount(24).generate(new Palette.PaletteAsyncListener() {
                     @Override
                     public void onGenerated(Palette palette) {
-                        weatherColor = palette.getVibrantColor(weatherColor);
-                        timeColor = palette.getDarkVibrantColor(timeColor);
-                        mWeatherTextPaint.setColor(weatherColor);
-                        mTimePaint.setColor(timeColor);
-//                        backgroundColor = palette.getLightMutedColor(backgroundColor);
-//                        mBackgroundPaint.setColor(backgroundColor);
+                        mWeatherColor = palette.getVibrantColor(mWeatherColor);
+                        mTimeColor = palette.getDarkVibrantColor(mTimeColor);
+                        mWeatherTextPaint.setColor(mWeatherColor);
+                        mTimePaint.setColor(mTimeColor);
 
                     }
                 });
-
             }
         }
         return super.onStartCommand(intent, flags, startId);
@@ -141,8 +138,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private class Engine extends CanvasWatchFaceService.Engine {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
-
-
         boolean mAmbient;
         Time mTime;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -178,16 +173,16 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mWeatherImageYOffset = resources.getDimension(R.dimen.weather_image_y_offset);
 
             mBackgroundPaint = new Paint();
-            backgroundColor = resources.getColor(R.color.background);
-            mBackgroundPaint.setColor(backgroundColor);
+            mBackgroundColor = resources.getColor(R.color.background);
+            mBackgroundPaint.setColor(mBackgroundColor);
 
+            mTimeColor = resources.getColor(R.color.digital_text);
             mTimePaint = new Paint();
+            mTimePaint = createTextPaint(mTimeColor);
+
+            mWeatherColor = resources.getColor(R.color.digital_weather_text);
             mWeatherTextPaint = new Paint();
-            timeColor = resources.getColor(R.color.digital_text);
-            mTimePaint = createTextPaint(timeColor);
-            weatherColor = resources.getColor(R.color.digital_weather_text);
-            mWeatherTextPaint = createTextPaint(weatherColor);
-            mWeatherTextPaint.setTextAlign(Paint.Align.CENTER);
+            mWeatherTextPaint = createTextPaint(mWeatherColor);
             mTime = new Time();
         }
 
