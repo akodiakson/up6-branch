@@ -34,6 +34,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Parcelable;
 import android.preference.PreferenceManager;
+import android.support.v7.graphics.Palette;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
 import android.text.format.Time;
@@ -68,10 +69,19 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private static final int MSG_UPDATE_TIME = 0;
 
     private static final int MSG_UPDATE_WEATHER_DATA = 1;
+    public static final int BITMAP_SIZE = 48;
 
     private GetRecentWeatherDataTask weatherDataTask;
     private String mRecentWeatherData;
     private Bitmap mWeatherBitmap;
+    private float mWeatherImageYOffset;
+    private Paint mTimePaint;
+    private Paint mWeatherTextPaint;
+    Paint mBackgroundPaint;
+
+    private int timeColor;
+    private int weatherColor;
+    private int backgroundColor;
 
 
     @Override
@@ -108,7 +118,22 @@ public class MyWatchFace extends CanvasWatchFaceService {
         if(intent != null && ACTION_NOTIFY_WEATHER_BITMAP_AVAILABLE.equals(intent.getAction())){
             Parcelable parcelableExtra = intent.getParcelableExtra(EXTRA_WEATHER_BITMAP);
             System.out.println("parcelableExtra = " + parcelableExtra);
-            mWeatherBitmap = (Bitmap) parcelableExtra;
+            mWeatherBitmap = Bitmap.createScaledBitmap((Bitmap) parcelableExtra, BITMAP_SIZE, BITMAP_SIZE, false);
+            if(mWeatherBitmap != null){
+                Palette.from(mWeatherBitmap).maximumColorCount(24).generate(new Palette.PaletteAsyncListener() {
+                    @Override
+                    public void onGenerated(Palette palette) {
+                        weatherColor = palette.getVibrantColor(weatherColor);
+                        timeColor = palette.getDarkVibrantColor(timeColor);
+                        mWeatherTextPaint.setColor(weatherColor);
+                        mTimePaint.setColor(timeColor);
+//                        backgroundColor = palette.getLightMutedColor(backgroundColor);
+//                        mBackgroundPaint.setColor(backgroundColor);
+
+                    }
+                });
+
+            }
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -116,9 +141,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
     private class Engine extends CanvasWatchFaceService.Engine {
         final Handler mUpdateTimeHandler = new EngineHandler(this);
         boolean mRegisteredTimeZoneReceiver = false;
-        Paint mBackgroundPaint;
-        Paint mTextPaint;
-        Paint mWeatherTextPaint;
+
+
         boolean mAmbient;
         Time mTime;
         final BroadcastReceiver mTimeZoneReceiver = new BroadcastReceiver() {
@@ -151,14 +175,18 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     .build());
             Resources resources = MyWatchFace.this.getResources();
             mYOffset = resources.getDimension(R.dimen.digital_y_offset);
+            mWeatherImageYOffset = resources.getDimension(R.dimen.weather_image_y_offset);
 
             mBackgroundPaint = new Paint();
-            mBackgroundPaint.setColor(resources.getColor(R.color.background));
+            backgroundColor = resources.getColor(R.color.background);
+            mBackgroundPaint.setColor(backgroundColor);
 
-            mTextPaint = new Paint();
+            mTimePaint = new Paint();
             mWeatherTextPaint = new Paint();
-            mTextPaint = createTextPaint(resources.getColor(R.color.digital_text));
-            mWeatherTextPaint = createTextPaint(resources.getColor(R.color.digital_weather_text));
+            timeColor = resources.getColor(R.color.digital_text);
+            mTimePaint = createTextPaint(timeColor);
+            weatherColor = resources.getColor(R.color.digital_weather_text);
+            mWeatherTextPaint = createTextPaint(weatherColor);
             mWeatherTextPaint.setTextAlign(Paint.Align.CENTER);
             mTime = new Time();
         }
@@ -172,6 +200,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
         private Paint createTextPaint(int textColor) {
             Paint paint = new Paint();
             paint.setColor(textColor);
+            paint.setTextAlign(Paint.Align.CENTER);
             paint.setTypeface(NORMAL_TYPEFACE);
             paint.setAntiAlias(true);
             return paint;
@@ -229,7 +258,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             float weatherTextSize = resources.getDimension(isRound
                     ? R.dimen.weather_text_size : R.dimen.weather_text_size);
 
-            mTextPaint.setTextSize(textSize);
+            mTimePaint.setTextSize(textSize);
             mWeatherTextPaint.setTextSize(weatherTextSize);
         }
 
@@ -251,7 +280,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             if (mAmbient != inAmbientMode) {
                 mAmbient = inAmbientMode;
                 if (mLowBitAmbient) {
-                    mTextPaint.setAntiAlias(!inAmbientMode);
+                    mTimePaint.setAntiAlias(!inAmbientMode);
                     mWeatherTextPaint.setAntiAlias(!inAmbientMode);
                 }
                 invalidate();
@@ -295,22 +324,23 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 canvas.drawRect(0, 0, bounds.width(), bounds.height(), mBackgroundPaint);
             }
 
+            if(mWeatherBitmap != null){
+                canvas.drawBitmap(mWeatherBitmap, bounds.centerX() - (BITMAP_SIZE /2),  mWeatherImageYOffset, mWeatherTextPaint);
+            }
+
             // Draw H:MM in ambient mode or H:MM:SS in interactive mode.
             mTime.setToNow();
             String text = mAmbient
                     ? String.format("%d:%02d", mTime.hour, mTime.minute)
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
-            canvas.drawText(text, mXOffset, mYOffset, mTextPaint);
+            canvas.drawText(text, bounds.centerX(), mYOffset, mTimePaint);
             //TODO -- Andrew -- Here is where I'd draw the hi/low text
-            if(mRecentWeatherData != null && mRecentWeatherData.length() > 0){
+            if(mRecentWeatherData != null && mRecentWeatherData.length() > 0) {
 //                canvas.drawText(mRecentWeatherData, mXOffset, mYOffset * 1.25f, mWeatherTextPaint);
-
                 canvas.drawText(mRecentWeatherData, bounds.centerX(), mYOffset * 1.25f, mWeatherTextPaint);
             }
 
-            if(mWeatherBitmap != null){
-                canvas.drawBitmap(mWeatherBitmap, 0, 0, mWeatherTextPaint);
-            }
+
         }
 
         /**
