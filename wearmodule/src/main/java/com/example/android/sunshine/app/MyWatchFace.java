@@ -114,8 +114,8 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     Palette.from(mWeatherBitmap).maximumColorCount(24).generate(new Palette.PaletteAsyncListener() {
                         @Override
                         public void onGenerated(Palette palette) {
-                            mWeatherColor = palette.getVibrantColor(mWeatherColor);
-                            mTimeColor = palette.getDarkVibrantColor(mTimeColor);
+                            mWeatherColor = palette.getDarkVibrantColor(mWeatherColor);
+                            mTimeColor = palette.getVibrantColor(mTimeColor);
                             mWeatherTextPaint.setColor(mWeatherColor);
                             mTimePaint.setColor(mTimeColor);
                         }
@@ -172,11 +172,11 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(resources.getColor(R.color.background));
 
-            mTimeColor = resources.getColor(R.color.digital_text);
+            mTimeColor = resources.getColor(R.color.default_time_color);
             mTimePaint = new Paint();
             mTimePaint = createTextPaint(mTimeColor);
 
-            mWeatherColor = resources.getColor(R.color.digital_weather_text);
+            mWeatherColor = resources.getColor(R.color.default_weather_color);
             mWeatherTextPaint = new Paint();
             mWeatherTextPaint = createTextPaint(mWeatherColor);
             mTime = new Time();
