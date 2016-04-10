@@ -20,7 +20,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -28,12 +27,10 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.Parcelable;
-import android.preference.PreferenceManager;
 import android.support.v7.graphics.Palette;
 import android.support.wearable.watchface.CanvasWatchFaceService;
 import android.support.wearable.watchface.WatchFaceStyle;
@@ -70,20 +67,17 @@ public class MyWatchFace extends CanvasWatchFaceService {
      */
     private static final int MSG_UPDATE_TIME = 0;
 
-    private static final int MSG_UPDATE_WEATHER_DATA = 1;
-    public static final int BITMAP_SIZE = 48;
+    public static final int BITMAP_SIZE = 36;
 
-    private GetRecentWeatherDataTask weatherDataTask;
     private String mRecentWeatherData;
     private Bitmap mWeatherBitmap;
     private float mWeatherImageYOffset;
     private Paint mTimePaint;
     private Paint mWeatherTextPaint;
-    Paint mBackgroundPaint;
+    private Paint mBackgroundPaint;
 
     private int mTimeColor;
     private int mWeatherColor;
-    private int mBackgroundColor;
 
     @Override
     public Engine onCreateEngine() {
@@ -104,9 +98,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 switch (msg.what) {
                     case MSG_UPDATE_TIME:
                         engine.handleUpdateTimeMessage();
-                        break;
-                    case MSG_UPDATE_WEATHER_DATA:
-                        engine.handleUpdateWeatherData();
                         break;
                 }
             }
@@ -179,8 +170,7 @@ public class MyWatchFace extends CanvasWatchFaceService {
             mWeatherImageYOffset = resources.getDimension(R.dimen.weather_image_y_offset);
 
             mBackgroundPaint = new Paint();
-            mBackgroundColor = resources.getColor(R.color.background);
-            mBackgroundPaint.setColor(mBackgroundColor);
+            mBackgroundPaint.setColor(resources.getColor(R.color.background));
 
             mTimeColor = resources.getColor(R.color.digital_text);
             mTimePaint = new Paint();
@@ -217,8 +207,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                 // Update time zone in case it changed while we weren't visible.
                 mTime.clear(TimeZone.getDefault().getID());
                 mTime.setToNow();
-                mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_WEATHER_DATA, 50);
-
             } else {
                 unregisterReceiver();
             }
@@ -335,7 +323,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                     ? String.format("%d:%02d", mTime.hour, mTime.minute)
                     : String.format("%d:%02d:%02d", mTime.hour, mTime.minute, mTime.second);
             canvas.drawText(text, bounds.centerX(), mYOffset, mTimePaint);
-            //TODO -- Andrew -- Here is where I'd draw the hi/low text
             if(mRecentWeatherData != null && mRecentWeatherData.length() > 0) {
                 canvas.drawText(mRecentWeatherData, bounds.centerX(), mYOffset * 1.25f, mWeatherTextPaint);
             }
@@ -371,29 +358,6 @@ public class MyWatchFace extends CanvasWatchFaceService {
                         - (timeMs % INTERACTIVE_UPDATE_RATE_MS);
                 mUpdateTimeHandler.sendEmptyMessageDelayed(MSG_UPDATE_TIME, delayMs);
             }
-        }
-
-        private void handleUpdateWeatherData(){
-            if(weatherDataTask != null && !weatherDataTask.isCancelled()){
-                weatherDataTask.cancel(true);
-            }
-            weatherDataTask = new GetRecentWeatherDataTask();
-            weatherDataTask.execute();
-        }
-    }
-
-    private class GetRecentWeatherDataTask extends AsyncTask<Void, Void, String>{
-        @Override
-        protected String doInBackground(Void... params) {
-            // Get today's data from the ContentProvider
-
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            return prefs.getString("KEY_WEARABLE_WEATHER_DATA", "dummy");
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            mRecentWeatherData = s;
         }
     }
 }
